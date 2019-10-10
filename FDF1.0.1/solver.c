@@ -85,7 +85,8 @@ void sor_coupled(image_t *du, image_t *dv, image_t *a11, image_t *a12, image_t *
     const int stride = du->stride, width = du->width;
     const int iterheight = du->height-1, iterline = (stride)/4, width_minus_1_sizeoffloat = sizeof(float)*(width-1);
     int j,iter,i,k;
-    float *floatarray = (float*) memalign(16, stride*sizeof(float)*3); 
+    //memalign() replaced with _aligned_malloc()
+    float *floatarray = (float*) _aligned_malloc(16, stride*sizeof(float)*3); 
     if(floatarray==NULL){
         fprintf(stderr, "error in sor_coupled(): not enough memory\n");
         exit(1);

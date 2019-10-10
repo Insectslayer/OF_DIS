@@ -13,6 +13,7 @@
 #include <stdio.h>  
 
 #include "refine_variational.h"
+//#include "FDF1.0.1/image.h"
 
 using std::cout;
 using std::endl;

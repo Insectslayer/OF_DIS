@@ -21,7 +21,8 @@ image_t *image_new(const int width, const int height){
     image->width = width;
     image->height = height;  
     image->stride = ( (width+3) / 4 ) * 4;
-    image->c1 = (float*) memalign(16, image->stride*height*sizeof(float));
+    //memalign() replaced with _aligned_malloc()
+    image->c1 = (float*) _aligned_malloc(16, image->stride*height*sizeof(float));
     if(image->c1== NULL){
         fprintf(stderr, "Error: image_new() - not enough memory !\n");
         exit(1);
@@ -74,7 +75,8 @@ color_image_t *color_image_new(const int width, const int height){
     image->width = width;
     image->height = height;  
     image->stride = ( (width+3) / 4 ) * 4;
-    image->c1 = (float*) memalign(16, 3*image->stride*height*sizeof(float));
+    //memalign() replaced with _aligned_malloc()
+    image->c1 = (float*) _aligned_malloc(16, 3*image->stride*height*sizeof(float));
     if(image->c1 == NULL){
         fprintf(stderr, "Error: color_image_new() - not enough memory !\n");
         exit(1);
@@ -110,7 +112,8 @@ void resize_if_needed_newsize(image_t *im, const int w, const int h){
         im->width = w;
         im->height = h;
         im->stride = ((w+3)/4)*4;
-        float *data = (float *) memalign(16, im->stride*h*sizeof(float));
+        //memalign() replaced with _aligned_malloc()
+        float *data = (float *) _aligned_malloc(16, im->stride*h*sizeof(float));
         if(data == NULL){
             fprintf(stderr, "Error: resize_if_needed_newsize() - not enough memory !\n");
             exit(1);
@@ -635,12 +638,13 @@ void color_image_convolve_hv(color_image_t *dst, const color_image_t *src, const
             dst_red = {width,height,stride,dst->c1}, dst_green = {width,height,stride,dst->c2}, dst_blue = {width,height,stride,dst->c3};
     // horizontal and vertical
     if(horiz_conv != NULL && vert_conv != NULL){
-        float *tmp_data = malloc(sizeof(float)*stride*height);
+        //replaced float *tmp_data with void *tmp_data
+        void *tmp_data = malloc(sizeof(float)*stride*height);
         if(tmp_data == NULL){
 	        fprintf(stderr,"error color_image_convolve_hv(): not enough memory\n");
 	        exit(1);
         }  
-        image_t tmp = {width,height,stride,tmp_data};   
+        image_t tmp = {width,height,stride,(float*)tmp_data};   
         // perform convolution for each channel
         convolve_horiz(&tmp,&src_red,horiz_conv); 
         convolve_vert(&dst_red,&tmp,vert_conv); 
@@ -669,12 +673,13 @@ void image_convolve_hv(image_t *dst, const image_t *src, const convolution_t *ho
             dst_red = {width,height,stride,dst->c1};
     // horizontal and vertical
     if(horiz_conv != NULL && vert_conv != NULL){
-        float *tmp_data = malloc(sizeof(float)*stride*height);
+        //replaced float *tmp_data with void *tmp_data
+        void *tmp_data = malloc(sizeof(float)*stride*height);
         if(tmp_data == NULL){
           fprintf(stderr,"error image_convolve_hv(): not enough memory\n");
           exit(1);
         }  
-        image_t tmp = {width,height,stride,tmp_data};   
+        image_t tmp = {width,height,stride,(float*)tmp_data};   
         // perform convolution for each channel
         convolve_horiz(&tmp,&src_red,horiz_conv); 
         convolve_vert(&dst_red,&tmp,vert_conv); 
