@@ -141,7 +141,7 @@ void compute_smoothness(image_t *dst_horiz, image_t *dst_vert, const image_t *uu
     // compute dst_horiz
     v4sf *dsthp = (v4sf*) dst_horiz->c1; sp = (v4sf*) smoothness->c1;
     //memalign() replaced with _aligned_malloc()
-    float *sp_shift = (float*) _aligned_malloc(16, stride*sizeof(float)); // aligned shifted copy of the current line
+    float *sp_shift = (float*) _aligned_malloc(stride*sizeof(float), 16); // aligned shifted copy of the current line
     for(j=0;j<height;j++){
         // create an aligned copy
         float *spf = (float*) sp;
@@ -154,7 +154,8 @@ void compute_smoothness(image_t *dst_horiz, image_t *dst_vert, const image_t *uu
         }
         memset( &dst_horiz->c1[j*stride+width-1], 0, sizeof(float)*(stride-width+1));
     }
-    free(sp_shift);
+    // free() replaced with _aligned_free()
+    _aligned_free(sp_shift);
     // compute dst_vert
     v4sf *dstvp = (v4sf*) dst_vert->c1, *sp_bottom = (v4sf*) (smoothness->c1+stride); sp = (v4sf*) smoothness->c1;
     for(j=0 ; j<(height-1)*stride/4 ; j++){
@@ -342,7 +343,6 @@ void compute_data(image_t *a11, image_t *a12, image_t *a22, image_t *b1, image_t
     int i;
     for(i = 0 ; i<uu->height*uu->stride/4 ; i++){
         v4sf tmp, tmp2, n1, n2;
-        const v4sf three = {3.0f,3.0f,3.0f,3.0f};
 	#if (SELECTCHANNEL==3)
 	v4sf tmp3, tmp4, tmp5, tmp6, n3, n4, n5, n6;
 	#endif
@@ -359,7 +359,7 @@ void compute_data(image_t *a11, image_t *a12, image_t *a22, image_t *b1, image_t
             tmp3 = tmp/n3; tmp2 = tmp/n2; tmp /= n1;
             #else
             // Switched scalar 3 for vector {3.0f,3.0f,3.0f,3.0f}
-            tmp = (*maskp) * hdover3 / __builtin_ia32_sqrtps(three * tmp*tmp/n1 + epscolor);
+            tmp = (*maskp) * hdover3 / __builtin_ia32_sqrtps(3 * tmp*tmp/n1 + epscolor);
             tmp /= n1;
             #endif
             *a11p += tmp  * (*ix1p) * (*ix1p);
@@ -398,8 +398,7 @@ void compute_data(image_t *a11, image_t *a12, image_t *a22, image_t *b1, image_t
         tmp = (*maskp) * hgover3 / __builtin_ia32_sqrtps(tmp*tmp/n1 + tmp2*tmp2/n2 + tmp3*tmp3/n3 + tmp4*tmp4/n4 + tmp5*tmp5/n5 + tmp6*tmp6/n6 + epsgrad);
         tmp6 = tmp/n6; tmp5 = tmp/n5; tmp4 = tmp/n4; tmp3 = tmp/n3; tmp2 = tmp/n2; tmp /= n1;      
         #else
-        // Switched scalar 3 for vector {3.0f,3.0f,3.0f,3.0f}
-        tmp = (*maskp) * hgover3 / __builtin_ia32_sqrtps(three * tmp*tmp/n1 + three * tmp2*tmp2/n2 + epsgrad);
+        tmp = (*maskp) * hgover3 / __builtin_ia32_sqrtps(3 * tmp*tmp/n1 + 3 * tmp2*tmp2/n2 + epsgrad);
         tmp2 = tmp/n2; tmp /= n1;      
         #endif
         *a11p += tmp *(*ixx1p)*(*ixx1p) + tmp2*(*ixy1p)*(*ixy1p);
@@ -478,7 +477,6 @@ void compute_data_DE(image_t *a11, image_t *b1, image_t *mask, image_t *wx, imag
     int i;
     for(i = 0 ; i<uu->height*uu->stride/4 ; i++){
         v4sf tmp, tmp2, n1, n2;
-        const v4sf three = {3.0f,3.0f,3.0f,3.0f};
 	#if (SELECTCHANNEL==3)
 	v4sf tmp3, tmp4, tmp5, tmp6, n3, n4, n5, n6;
 	#endif
@@ -494,8 +492,7 @@ void compute_data_DE(image_t *a11, image_t *b1, image_t *mask, image_t *wx, imag
             tmp = (*maskp) * hdover3 / __builtin_ia32_sqrtps(tmp*tmp/n1 + tmp2*tmp2/n2 + tmp3*tmp3/n3 + epscolor);
             tmp3 = tmp/n3; tmp2 = tmp/n2; tmp /= n1;
             #else
-            // Switched scalar 3 for vector {3.0f,3.0f,3.0f,3.0f}
-            tmp = (*maskp) * hdover3 / __builtin_ia32_sqrtps(three * tmp*tmp/n1 + epscolor);
+            tmp = (*maskp) * hdover3 / __builtin_ia32_sqrtps(3 * tmp*tmp/n1 + epscolor);
             tmp /= n1;
             #endif
             *a11p += tmp  * (*ix1p) * (*ix1p);
@@ -524,7 +521,7 @@ void compute_data_DE(image_t *a11, image_t *b1, image_t *mask, image_t *wx, imag
         tmp = (*maskp) * hgover3 / __builtin_ia32_sqrtps(tmp*tmp/n1 + tmp2*tmp2/n2 + tmp3*tmp3/n3 + tmp4*tmp4/n4 + tmp5*tmp5/n5 + tmp6*tmp6/n6 + epsgrad);
         tmp6 = tmp/n6; tmp5 = tmp/n5; tmp4 = tmp/n4; tmp3 = tmp/n3; tmp2 = tmp/n2; tmp /= n1;      
         #else
-        tmp = (*maskp) * hgover3 / __builtin_ia32_sqrtps(three * tmp*tmp/n1 + three * tmp2*tmp2/n2 + epsgrad);
+        tmp = (*maskp) * hgover3 / __builtin_ia32_sqrtps(3 * tmp*tmp/n1 + 3 * tmp2*tmp2/n2 + epsgrad);
         tmp2 = tmp/n2; tmp /= n1;      
         #endif
         *a11p += tmp *(*ixx1p)*(*ixx1p) + tmp2*(*ixy1p)*(*ixy1p);
