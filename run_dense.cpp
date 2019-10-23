@@ -365,10 +365,6 @@ int main( int argc, char** argv )
   cv::Mat img_ao_fmat, img_bo_fmat;
   cv::Size sz = img_ao_mat.size();
   int width_org = sz.width;   // unpadded original image size
-  int height_org = sz.height;  // unpadded original image size 
-  
-  
-  
   
   // *** Parse rest of parameters, See oflow.h for definitions.
   int lv_f, lv_l, maxiter, miniter, patchsz, patnorm, costfct, tv_innerit, tv_solverit, verbosity;
@@ -448,125 +444,37 @@ int main( int argc, char** argv )
     //if (hasinfile) infile = argv[acnt++];  
   }
 
-  
-  
-  // *** Pad image such that width and height are restless divisible on all scales (except last)
-  int padw=0, padh=0;
-  int scfct = pow(2,lv_f); // enforce restless division by this number on coarsest scale
-  //if (hasinfile) scfct = pow(2,lv_f+1); // if initialization file is given, make sure that size is restless divisible by 2^(lv_f+1) !
-  int div = sz.width % scfct;
-  if (div>0) padw = scfct - div;
-  div = sz.height % scfct;
-  if (div>0) padh = scfct - div;          
-  if (padh>0 || padw>0)
-  {
-    copyMakeBorder(img_ao_mat,img_ao_mat,floor((float)padh/2.0f),ceil((float)padh/2.0f),floor((float)padw/2.0f),ceil((float)padw/2.0f),cv::BORDER_REPLICATE);
-    copyMakeBorder(img_bo_mat,img_bo_mat,floor((float)padh/2.0f),ceil((float)padh/2.0f),floor((float)padw/2.0f),ceil((float)padw/2.0f),cv::BORDER_REPLICATE);
-  }
-  sz = img_ao_mat.size();  // padded image size, ensures divisibility by 2 on all scales (except last)
-  
-  // Timing, image loading
-  if (verbosity > 1)
-  {
-    gettimeofday(&tv_end_all, NULL);
-    double tt = (tv_end_all.tv_sec-tv_start_all.tv_sec)*1000.0f + (tv_end_all.tv_usec-tv_start_all.tv_usec)/1000.0f;
-    printf("TIME (Image loading     ) (ms): %3g\n", tt);
-    gettimeofday(&tv_start_all, NULL);
-  }
-  
-  
-  
-  
-  //  *** Generate scale pyramides
-  img_ao_mat.convertTo(img_ao_fmat, CV_32F); // convert to float
-  img_bo_mat.convertTo(img_bo_fmat, CV_32F);
-  
-  const float* img_ao_pyr[lv_f+1];
-  const float* img_bo_pyr[lv_f+1];
-  const float* img_ao_dx_pyr[lv_f+1];
-  const float* img_ao_dy_pyr[lv_f+1];
-  const float* img_bo_dx_pyr[lv_f+1];
-  const float* img_bo_dy_pyr[lv_f+1];
-  
-  cv::Mat img_ao_fmat_pyr[lv_f+1];
-  cv::Mat img_bo_fmat_pyr[lv_f+1];
-  cv::Mat img_ao_dx_fmat_pyr[lv_f+1];
-  cv::Mat img_ao_dy_fmat_pyr[lv_f+1];
-  cv::Mat img_bo_dx_fmat_pyr[lv_f+1];
-  cv::Mat img_bo_dy_fmat_pyr[lv_f+1];
-  
-  ConstructImgPyramide(img_ao_fmat, img_ao_fmat_pyr, img_ao_dx_fmat_pyr, img_ao_dy_fmat_pyr, img_ao_pyr, img_ao_dx_pyr, img_ao_dy_pyr, lv_f, lv_l, rpyrtype, 1, patchsz, padw, padh);
-  ConstructImgPyramide(img_bo_fmat, img_bo_fmat_pyr, img_bo_dx_fmat_pyr, img_bo_dy_fmat_pyr, img_bo_pyr, img_bo_dx_pyr, img_bo_dy_pyr, lv_f, lv_l, rpyrtype, 1, patchsz, padw, padh);
-
-  // Timing, image gradients and pyramid
-  if (verbosity > 1)
-  {
-    gettimeofday(&tv_end_all, NULL);
-    double tt = (tv_end_all.tv_sec-tv_start_all.tv_sec)*1000.0f + (tv_end_all.tv_usec-tv_start_all.tv_usec)/1000.0f;
-    printf("TIME (Pyramide+Gradients) (ms): %3g\n", tt);
-  }
-
-  
-//     // Read Initial Truth flow (if available)
-//     float * initptr = nullptr;
-//     cv::Mat flowinit;
-//     if (hasinfile)
-//     {
-//       #if (SELECTMODE==1)
-//       flowinit.create(height_org, width_org, CV_32FC2);
-//       #else
-//       flowinit.create(height_org, width_org, CV_32FC1);
-//       #endif
-//       
-//       ReadFlowFile(flowinit, infile);
-//         
-//       // padding to ensure divisibility by 2
-//       if (padh>0 || padw>0)
-//         copyMakeBorder(flowinit,flowinit,floor((float)padh/2.0f),ceil((float)padh/2.0f),floor((float)padw/2.0f),ceil((float)padw/2.0f),cv::BORDER_REPLICATE);
-//       
-//       // resizing to coarsest scale - 1, since the array is upsampled at .5 in the code
-//       float sc_fct = pow(2,-lv_f-1);
-//       flowinit *= sc_fct;
-//       cv::resize(flowinit, flowinit, cv::Size(), sc_fct, sc_fct , cv::INTER_AREA); 
-//       
-//       initptr = (float*)flowinit.data;
-//     }
-
-  
-  
-  
-  //  *** Run main optical flow / depth algorithm
   float sc_fct = pow(2,lv_l);
   #if (SELECTMODE==1)
   cv::Mat flowout(sz.height / sc_fct , sz.width / sc_fct, CV_32FC2); // Optical Flow
   #else
   cv::Mat flowout(sz.height / sc_fct , sz.width / sc_fct, CV_32FC1); // Depth
-  #endif       
-  
-  OFC::OFClass ofc(img_ao_pyr, img_ao_dx_pyr, img_ao_dy_pyr, 
-                    img_bo_pyr, img_bo_dx_pyr, img_bo_dy_pyr, 
-                    patchsz,  // extra image padding to avoid border violation check
-                    (float*)flowout.data,   // pointer to n-band output float array
-                    nullptr,  // pointer to n-band input float array of size of first (coarsest) scale, pass as nullptr to disable
-                    sz.width, sz.height, 
-                    lv_f, lv_l, maxiter, miniter, mindprate, mindrrate, minimgerr, patchsz, poverl, 
-                    usefbcon, costfct, nochannels, patnorm, 
-                    usetvref, tv_alpha, tv_gamma, tv_delta, tv_innerit, tv_solverit, tv_sor,
-                    verbosity);    
+  #endif
 
-  if (verbosity > 1) gettimeofday(&tv_start_all, NULL);
-      
-  
-  
-  // *** Resize to original scale, if not run to finest level
-  if (lv_l != 0)
-  {
-    flowout *= sc_fct;
-    cv::resize(flowout, flowout, cv::Size(), sc_fct, sc_fct , cv::INTER_LINEAR);
-  }
-  
-  // If image was padded, remove padding before saving to file
-  flowout = flowout(cv::Rect((int)floor((float)padw/2.0f),(int)floor((float)padh/2.0f),width_org,height_org));
+  flowout = ComputeOpticalFlow(img_ao_mat,
+                               img_bo_mat,
+                               lv_f,
+                               lv_l,
+                               maxiter,
+                               miniter,
+                               patchsz,
+                               patnorm,
+                               costfct,
+                               tv_innerit,
+                               tv_solverit,
+                               nochannels,
+                               rpyrtype,
+                               verbosity,
+                               mindprate,
+                               mindrrate,
+                               minimgerr,
+                               poverl,
+                               tv_alpha,
+                               tv_gamma,
+                               tv_delta,
+                               tv_sor,
+                               usefbcon,
+                               usetvref);
 
   // Save Result Image    
   #if (SELECTMODE==1)
